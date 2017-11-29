@@ -22,6 +22,7 @@ from dynamic_reconfigure.server import Server
 from quad_controller.cfg import attitude_controller_paramsConfig
 from quad_controller.pid_controller import PIDController
 
+import pdb
 
 class AttitudeControllerNode():
     def __init__(self):
@@ -31,7 +32,7 @@ class AttitudeControllerNode():
         roll_ki = float(rospy.get_param('~roll_ki', '0'))
         roll_ki_max = float(rospy.get_param('~roll_ki_max', '0'))
         roll_kd = float(rospy.get_param('~roll_kd', '0'))
-        self.roll_controller_ = PIDController(roll_kp, roll_ki, roll_kd, roll_ki_max)
+        self.roll_controller_ = PIDController(roll_kp, roll_ki, roll_kd, roll_ki_max, debug=True)
 
         #Pitch Controller
         pitch_kp = float(rospy.get_param('~pitch_kp', '0'))
@@ -79,12 +80,13 @@ class AttitudeControllerNode():
         self.yaw_controller_.setKD(config.yaw_kd)
 
         # Dynamic Reconfig Setpoint
-        if config.use_dr_set_point:
-            self.roll_controller_.setTarget(config.roll_set_point)
-            self.pitch_controller_.setTarget(config.pitch_set_point)
-            self.yaw_controller_.setTarget(config.yaw_set_point)
+#        if config.use_dr_set_point:
+#            pdb.set_trace()
+        self.roll_controller_.setTarget(config.roll_set_point)
+        self.pitch_controller_.setTarget(config.pitch_set_point)
+        self.yaw_controller_.setTarget(config.yaw_set_point)
 
-        return config
+#        return config
 
     def controller_reset_callback(self, pid_reset_msg):
         rospy.loginfo('Attitude controller reset!')
@@ -114,7 +116,7 @@ class AttitudeControllerNode():
                                                                                       self.last_imu_.orientation.z,
                                                                                       self.last_imu_.orientation.w])
 
-
+        print("\tRoll: {} / Pitch: {} / Yaw: {}".format(roll_meas, pitch_meas, yaw_meas))
         t = self.last_imu_.header.stamp.to_sec()
         roll_cmd = self.roll_controller_.update(roll_meas, t)
         pitch_cmd = self.pitch_controller_.update(pitch_meas, t)
