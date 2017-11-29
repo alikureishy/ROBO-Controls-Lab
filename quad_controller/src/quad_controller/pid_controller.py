@@ -7,8 +7,7 @@ import pdb
 
 class PIDController:
     def __init__(self, kp = 0.0, ki = 0.0, kd = 0.0, max_windup = 20,
-            start_time = 0, alpha = 1., u_bounds = [float('-inf'), float('inf')]):
-        print("          PID: Initializing")
+            start_time = 0, alpha = 1., u_bounds = [float('-inf'), float('inf')], debug=False):
         # The PID controller can be initalized with a specific kp value
         # ki value, and kd value
         self.kp_ = float(kp)
@@ -31,17 +30,16 @@ class PIDController:
         self.start_time_ = start_time
         self.error_sum_ = 0.0
         self.last_error_ = 0.0
+        self.debug_ = debug
 
         # Control effort history
         self.u_p = [0]
         self.u_i = [0]
         self.u_d = [0]
         self.U = [0]
-        print("          PID: Initialized", self)
 
     # Add a reset function to clear the class variables
     def reset(self):
-        print("          PID: Resetting")
         self.set_point_ = 0.0
         self.kp_ = 0.0
         self.ki_ = 0.0
@@ -51,7 +49,6 @@ class PIDController:
         self.last_error_ = 0
         self.last_last_error_ = 0
         self.last_windup_ = 0.0
-        print("          PID: Reset")
 
     def setTarget(self, target):
         self.set_point_ = float(target)
@@ -69,12 +66,16 @@ class PIDController:
     def setMaxWindup(self, max_windup):
         self.max_windup_ = int(max_windup)
 
+    def pprint(self, text, data):
+        if self.debug_:
+            print("\t{}: {}".format(text, data))
+
     def update(self, measured_value, timestamp):
 #        pdb.set_trace()
         
-        print("          Target: ", self.set_point_)
+        self.pprint("Target", self.set_point_)
         delta_time = (timestamp - self.last_timestamp_)
-        print("          DeltaTime: ", delta_time)
+        self.pprint("DeltaTime", delta_time)
         if delta_time <= 0 or self.last_timestamp_ == 0:
             # Set the last_timestamp_
             self.last_timestamp_ = timestamp
@@ -85,15 +86,15 @@ class PIDController:
 
         # Calculate the error 
         error = self.set_point_ - measured_value
-        print("          Error: ", error)
+        self.pprint("Error", error)
         
         # Sum the errors
         self.error_sum_ += error * delta_time
-        print("          ErrorSum: ", self.error_sum_)
+        self.pprint("ErrorSum", self.error_sum_)
         
         # Find delta_error
         delta_error = error - self.last_error_
-        print("          DeltaError: ", delta_error)
+        self.pprint("DeltaError", delta_error)
         
         # Update the past error
         self.last_error_ = error
@@ -108,7 +109,7 @@ class PIDController:
         
         # Proportional error
         p = self.kp_ * error
-        print("          P = ", p)
+        self.pprint("P", p)
        
         # Integral error
         i = self.ki_ * self.error_sum_
@@ -116,18 +117,18 @@ class PIDController:
 #            i = self.max_windup_
 #        if i < -self.max_windup_:
 #            i = -self.max_windup_
-        print("          I = ", i)
+        self.pprint("I", i)
        
         # Recalculate the derivative error here incorporating 
         # derivative smoothing!
         ########################################
         d = self.kd_ * (delta_error / delta_time)
-        print("          D = ", d)
+        self.pprint("D", d)
         ########################################
         
         # Set the control effort
         u = p + i + d
-        print("          U = ", u)
+        self.pprint("U", u)
         
         # Enforce actuator saturation limits
         ########################################
@@ -144,6 +145,6 @@ class PIDController:
         self.u_d.append(d)
         self.U.append(u)
 
-        print("          Control: ", u)
+        self.pprint("Control", u)
         return u
 
