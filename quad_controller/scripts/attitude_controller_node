@@ -48,7 +48,7 @@ class AttitudeControllerNode():
         self.yaw_controller_ = PIDController(yaw_kp, yaw_ki, yaw_kd, yaw_ki_max)
 
         self.last_imu_ = Imu()
-        self.z_thrust_ = 0.0
+        self.thrust_ = 0.0
 
         self.reset_srv_ = rospy.Service('attitude_controller/controller_reset', Empty, self.controller_reset_callback)
 
@@ -57,8 +57,7 @@ class AttitudeControllerNode():
         self.imu_sub = rospy.Subscriber("/quad_rotor/imu", Imu, self.imu_callback)
         self.cmd_force_pub = rospy.Publisher("/quad_rotor/cmd_force", Wrench, queue_size=10)
         self.cmd_attitude_sub = rospy.Subscriber('/quad_rotor/cmd_attitude', Vector3, self.cmd_attitude_callback)
-        self.cmd_z_thrust_sub = rospy.Subscriber('/quad_rotor/cmd_z_thrust', Float64, self.cmd_z_thrust_callback)
-
+        self.cmd_thrust_sub = rospy.Subscriber('/quad_rotor/cmd_z_thrust', Float64, self.cmd_thrust_callback)
 
     def config_callback(self, config, level):
         rospy.loginfo('Attitude controller config changed!')
@@ -93,7 +92,7 @@ class AttitudeControllerNode():
         self.yaw_controller_.reset()
 
         self.last_imu_ = Imu()
-        self.z_thrust_ = 0.0
+        self.thrust_ = 0.0
         return EmptyResponse()
 
     def cmd_attitude_callback(self, attitude_vector):
@@ -101,8 +100,8 @@ class AttitudeControllerNode():
         self.pitch_controller_.setTarget(attitude_vector.y)
         self.yaw_controller_.setTarget(attitude_vector.z)
 
-    def cmd_z_thrust_callback(self, cmd_z_thrust):
-        self.z_thrust_ = cmd_z_thrust.data
+    def cmd_thrust_callback(self, cmd_z_thrust):
+        self.thrust_ = cmd_z_thrust.data
 
     def imu_callback(self, imu_msg):
         self.last_imu_ = imu_msg
@@ -117,23 +116,25 @@ class AttitudeControllerNode():
 
         t = self.last_imu_.header.stamp.to_sec()
         roll_cmd = self.roll_controller_.update(roll_meas, t)
+        rospy.logdebug("\t\t[Cascaded-ATI] X ({}/_) --> roll --> {} torque".format(math.degrees(roll_meas), roll_cmd))
         pitch_cmd = self.pitch_controller_.update(pitch_meas, t)
+        rospy.logdebug("\t\t[Cascaded-ATI] Y ({}/_) --> pitch --> {} torque".format(math.degrees(pitch_meas), pitch_cmd))
         yaw_cmd = self.yaw_controller_.update(yaw_meas, t)
+        rospy.logdebug("\t\t[Cascaded-ATI] Z ({}/_) --> yaw --> {} torque".format(math.degrees(yaw_meas), yaw_cmd))
+        rospy.logdebug("\t\t[Cascaded-ATI] Z --> thrust --> {} force".format(self.thrust_))
 
-
-        rospy.logdebug('roll meas:{},pitch_meas:{},yaw_meas:{},x:{},y:{},z:{},w:{}'.format(roll_meas,pitch_meas,yaw_meas,
-                                                                                          self.last_imu_.orientation.x,
-                                                                                          self.last_imu_.orientation.y,
-                                                                                          self.last_imu_.orientation.z,
-                                                                                          self.last_imu_.orientation.w))
-
-        rospy.logdebug('In degrees: r:{},p:{},y:{}'.format(math.degrees(roll_meas), math.degrees(pitch_meas), math.degrees(yaw_meas)))
+#        rospy.logdebug('roll meas:{},pitch_meas:{},yaw_meas:{},x:{},y:{},z:{},w:{}'.format(roll_meas,pitch_meas,yaw_meas,
+#                                                                                          self.last_imu_.orientation.x,
+#                                                                                          self.last_imu_.orientation.y,
+#                                                                                          self.last_imu_.orientation.z,
+#                                                                                          self.last_imu_.orientation.w))
+#        rospy.logdebug('In degrees: r:{},p:{},y:{}'.format(math.degrees(roll_meas), math.degrees(pitch_meas), math.degrees(yaw_meas)))
 
         wrench_cmd = Wrench()
         wrench_cmd.torque.x = roll_cmd
         wrench_cmd.torque.y = pitch_cmd
         wrench_cmd.torque.z = yaw_cmd
-        wrench_cmd.force.z = self.z_thrust_
+        wrench_cmd.force.z = self.thrust_
 
         self.cmd_force_pub.publish(wrench_cmd)
 

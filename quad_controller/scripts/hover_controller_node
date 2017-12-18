@@ -25,13 +25,16 @@ class HoverControllerNode():
         ki = float(rospy.get_param('ki', '0'))
         kd = float(rospy.get_param('kd', '0'))
 
-        self.controller_ = PIDController(kp, ki, kd, ki_max)
+        self.controller_ = PIDController(kp, ki, kd, ki_max, debug=True)
 
         self.pose_sub_ = rospy.Subscriber("/quad_rotor/pose", PoseStamped, self.pose_callback)
         self.cmd_force_pub_ = rospy.Publisher("/quad_rotor/cmd_force", Wrench, queue_size=10)
 
         srv = Server(hover_controller_paramsConfig, self.config_callback)
 
+    def pprint(self, text, data):
+        rospy.logdebug("\t[HOV] {}: {}".format(text, data))
+            
     def config_callback(self, config, level):
         rospy.loginfo("""Reconfigure Request: {target},\
             {kp}, {ki}, {kd}""".format(**config))
@@ -44,7 +47,9 @@ class HoverControllerNode():
         return config
 
     def pose_callback(self, pose_msg):
+        self.pprint("Pose: {}".format(pose_msg.pose.position.z))
         z_cmd = self.controller_.update(pose_msg.pose.position.z, pose_msg.header.stamp.to_sec())
+        self.pprint("\t--> Z: {}".format(z_cmd))
         cmd = Wrench()
 
         if z_cmd is not None:

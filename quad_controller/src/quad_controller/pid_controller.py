@@ -4,10 +4,11 @@
 # Author: Brandon Kinman
 
 import pdb
+import rospy
 
 class PIDController:
     def __init__(self, kp = 0.0, ki = 0.0, kd = 0.0, max_windup = 20,
-            start_time = 0, alpha = 1., u_bounds = [float('-inf'), float('inf')], debug=False):
+            start_time = 0, alpha = 1., u_bounds = [float('-inf'), float('inf')]):
         # The PID controller can be initalized with a specific kp value
         # ki value, and kd value
         self.kp_ = float(kp)
@@ -30,7 +31,6 @@ class PIDController:
         self.start_time_ = start_time
         self.error_sum_ = 0.0
         self.last_error_ = 0.0
-        self.debug_ = debug
 
         # Control effort history
         self.u_p = [0]
@@ -67,8 +67,7 @@ class PIDController:
         self.max_windup_ = int(max_windup)
 
     def pprint(self, text, data):
-        if self.debug_:
-            print("\t{}: {}".format(text, data))
+        rospy.logdebug("\t[PID] {}: {}".format(text, data))
 
     def update(self, measured_value, timestamp):
 #        pdb.set_trace()

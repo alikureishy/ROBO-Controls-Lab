@@ -64,8 +64,8 @@ class PositionControllerNode():
         self.goal_point_sub_ = rospy.Subscriber('/quad_rotor/goal_point', Point, self.goal_point_callback)
         self.reset_srv_ = rospy.Service('/position_controller/controller_reset', Empty, self.controller_reset_callback)
 
-        self.cmd_z_thrust_pub_ = rospy.Publisher('/quad_rotor/cmd_z_thrust', Float64, queue_size=10)
-        self.cmd_attitude_pub_ = rospy.Publisher('/quad_rotor/cmd_attitude', Vector3, queue_size=10)
+        self.thrust_cmd_pub_ = rospy.Publisher('/quad_rotor/cmd_z_thrust', Float64, queue_size=10)
+        self.euler_cmd_pub_ = rospy.Publisher('/quad_rotor/cmd_attitude', Vector3, queue_size=10)
 
         srv = Server(position_controller_paramsConfig, self.config_callback)
 
@@ -112,7 +112,6 @@ class PositionControllerNode():
         self.z_controller_.setTarget(goal_point_msg.z)
 
     def pose_callback(self, pose_msg):
-
         if self.counter >= 10 or not self.first_pose_received_:
             self.counter = 0
 
@@ -123,30 +122,30 @@ class PositionControllerNode():
 
             t = pose_msg.header.stamp.to_sec()
 
+            # This controller generates euler (roll, pitch) and thrust control commands
+            euler_cmd = Vector3()
+            thrust_cmd = Float64()
+            
             # Control Roll to to move along Y
             roll_cmd = -(1/9.81) * self.y_controller_.update(pose_msg.pose.position.y, t)
+            roll =  limit(roll_cmd, -15*(math.pi/180), +15*(math.pi/180))
+            rospy.logdebug("\t[POS] Y ({}) --> nav (roll) --> {}".format(pose_msg.pose.position.y, roll))
+            euler_cmd.x = roll
 
             # Control Pitch to move along X
             pitch_cmd = (1/9.81) * self.x_controller_.update(pose_msg.pose.position.x, t)
+            pitch = limit(pitch_cmd, -15*(math.pi/180), +15*(math.pi/180))
+            rospy.logdebug("\t[POS] X ({}) --> nav (pitch) --> {}".format(pose_msg.pose.position.x, pitch))
+            euler_cmd.y = pitch
 
             # Control Thrust to move along Z
             thrust = self.z_controller_.update(pose_msg.pose.position.z, t)
+            rospy.logdebug("\t[POS] Z ({}) --> thrust --> {}".format(pose_msg.pose.position.z, thrust))
+            thrust_cmd.data = limit(thrust + 2 * 9.81, -30+2*9.81, 30+2*9.81) # Compensate for g and clip thrust
 
-            roll =  limit(roll_cmd, -15*(math.pi/180), +15*(math.pi/180))
-            pitch = limit(pitch_cmd, -15*(math.pi/180), +15*(math.pi/180))
-
-            rpy_cmd = Vector3()
-            cmd_z_thrust = Float64()
-
-            rpy_cmd.x = roll
-            rpy_cmd.y = pitch
-
-            # Compensate for g and clip thrust
-            cmd_z_thrust.data = limit(thrust + 2 * 9.81, -30+2*9.81, 30+2*9.81)
-
-            rospy.logdebug('roll:{}, pitch:{}, z_thrust:{}'.format(roll, pitch, thrust))
-            self.cmd_attitude_pub_.publish(rpy_cmd)
-            self.cmd_z_thrust_pub_.publish(cmd_z_thrust)
+            # self.pprint('roll:{}, pitch:{}, z_thrust:{}'.format(roll, pitch, thrust))
+            self.euler_cmd_pub_.publish(euler_cmd)
+            self.thrust_cmd_pub_.publish(thrust_cmd)
         else:
             self.counter += 1
 
