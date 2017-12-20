@@ -116,12 +116,12 @@ class AttitudeControllerNode():
 
         t = self.last_imu_.header.stamp.to_sec()
         roll_cmd = self.roll_controller_.update(roll_meas, t)
-        rospy.logdebug("\t\t[Cascaded-ATI] X ({}/_) --> roll --> {} torque".format(math.degrees(roll_meas), roll_cmd))
+        rospy.logdebug("\t\t[ATT] X ({}/_) --> roll --> {} torque".format(math.degrees(roll_meas), roll_cmd))
         pitch_cmd = self.pitch_controller_.update(pitch_meas, t)
-        rospy.logdebug("\t\t[Cascaded-ATI] Y ({}/_) --> pitch --> {} torque".format(math.degrees(pitch_meas), pitch_cmd))
+        rospy.logdebug("\t\t[ATT] Y ({}/_) --> pitch --> {} torque".format(math.degrees(pitch_meas), pitch_cmd))
         yaw_cmd = self.yaw_controller_.update(yaw_meas, t)
-        rospy.logdebug("\t\t[Cascaded-ATI] Z ({}/_) --> yaw --> {} torque".format(math.degrees(yaw_meas), yaw_cmd))
-        rospy.logdebug("\t\t[Cascaded-ATI] Z --> thrust --> {} force".format(self.thrust_))
+        rospy.logdebug("\t\t[ATT] Z ({}/_) --> yaw --> {} torque".format(math.degrees(yaw_meas), yaw_cmd))
+        rospy.logdebug("\t\t[ATT] Z --> thrust --> {} force".format(self.thrust_))
 
 #        rospy.logdebug('roll meas:{},pitch_meas:{},yaw_meas:{},x:{},y:{},z:{},w:{}'.format(roll_meas,pitch_meas,yaw_meas,
 #                                                                                          self.last_imu_.orientation.x,
