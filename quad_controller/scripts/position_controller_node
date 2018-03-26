@@ -1,9 +1,5 @@
 #!/usr/bin/env python
-
-# Copyright (C) 2017 Electric Movement Inc.
-# All Rights Reserved.
-
-# Author: Brandon Kinman
+# Author: Safdar Kureishy
 
 import rospy
 import tf
